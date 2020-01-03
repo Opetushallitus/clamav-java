@@ -1,11 +1,20 @@
 sudo: required
 
+jdk:
+  - openjdk11
+
 language: java
 
 services:
   - docker
 
-before_install:
- - docker pull lokori/clamav-java
- - docker run -d -p 3310:3310 lokori/clamav-java
+script: >-
+  git clone https://github.com/Opetushallitus/ci-tools.git &&
+  docker run -d -p 3310:3310 lokori/clamav-java &&
+  mvn clean verify
 
+deploy:
+- provider: script
+  script: mvn deploy --settings ci-tools/common/maven-settings.xml
+  on:
+    branch: master
