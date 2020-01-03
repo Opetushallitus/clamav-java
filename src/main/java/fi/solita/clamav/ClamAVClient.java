@@ -48,11 +48,11 @@ public class ClamAVClient {
    * @return true if the server responded with proper ping reply.
    */
   public boolean ping() throws IOException {
-    try (Socket s = new Socket(hostName,port); OutputStream outs = s.getOutputStream()) {
+    try (Socket s = new Socket(hostName,port); OutputStream outs = s.getOutputStream(); InputStream is = s.getInputStream()) {
       s.setSoTimeout(timeout);
       outs.write(asBytes("zPING\0"));
       outs.flush();
-      return Arrays.equals(s.getInputStream().readNBytes(PONG_REPLY_LEN), asBytes("PONG"));
+      return Arrays.equals(is.readNBytes(PONG_REPLY_LEN), asBytes("PONG"));
     }
   }
 
