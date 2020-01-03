@@ -2,12 +2,10 @@ package fi.solita.clamav;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -54,15 +52,7 @@ public class ClamAVClient {
       s.setSoTimeout(timeout);
       outs.write(asBytes("zPING\0"));
       outs.flush();
-      byte[] b = new byte[PONG_REPLY_LEN];
-      InputStream inputStream = s.getInputStream();
-      int copyIndex = 0;
-      int readResult;
-      do {
-        readResult = inputStream.read(b, copyIndex, Math.max(b.length - copyIndex, 0));
-        copyIndex += readResult;
-      } while (readResult > 0);
-      return Arrays.equals(b, asBytes("PONG"));
+      return Arrays.equals(s.getInputStream().readNBytes(PONG_REPLY_LEN), asBytes("PONG"));
     }
   }
 
@@ -98,7 +88,7 @@ public class ClamAVClient {
           outs.write(chunk, 0, read);
           if (clamIs.available() > 0) {
             // reply from server before scan command has been terminated. 
-            byte[] reply = assertSizeLimit(readAll(clamIs));
+            byte[] reply = assertSizeLimit(clamIs.readAllBytes());
             throw new IOException("Scan aborted. Reply from server: " + new String(reply, StandardCharsets.US_ASCII));
           }
           read = is.read(chunk);
@@ -108,7 +98,7 @@ public class ClamAVClient {
         outs.write(new byte[]{0,0,0,0});
         outs.flush();
         // read reply
-        return assertSizeLimit(readAll(clamIs));
+        return assertSizeLimit(clamIs.readAllBytes());
       }
     } 
   }
@@ -146,18 +136,5 @@ public class ClamAVClient {
   // byte conversion based on ASCII character set regardless of the current system locale
   private static byte[] asBytes(String s) {
     return s.getBytes(StandardCharsets.US_ASCII);
-  }
-
-  // reads all available bytes from the stream
-  private static byte[] readAll(InputStream is) throws IOException {
-    ByteArrayOutputStream tmp = new ByteArrayOutputStream();
-
-    byte[] buf = new byte[2000];
-    int read = 0;
-    do {
-      read = is.read(buf);
-      tmp.write(buf, 0, read);
-    } while ((read > 0) && (is.available() > 0));
-    return tmp.toByteArray();
   }
 }
